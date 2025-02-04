@@ -1,0 +1,47 @@
+name: Check Python Script Output with Pylint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check_output:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies (including pylint)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+          # Add any other dependencies your script needs here
+      - name: Run Pylint
+        run: pylint your_script.py
+      - name: Run Python script and capture output
+        id: run_script
+        run: |
+          output=$(python your_script.py)
+          echo "::set-output name=script_output::$output"
+      - name: Check the output
+        run: |
+          expected_output="Onrm Xabjf!" # Replace with the actual expected string
+          actual_output="${{ steps.run_script.outputs.script_output }}"
+
+          if [[ "$actual_output" == "$expected_output" ]]; then
+            echo "Output matches expected value."
+          else
+            echo "Output MISMATCH:"
+            echo "Expected: $expected_output"
+            echo "Actual:   $actual_output"
+            exit 1  # Fail the workflow if the output doesn't match
+          fi
+      - name: (Optional) More detailed output comparison (for debugging)
+        if: always()
+        run: |
+          echo "Full Actual Output (for debugging):"
+          echo "${{ steps.run_script.outputs.script_output }}"
