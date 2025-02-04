@@ -1,14 +1,16 @@
 name: Check Python Script Output with Pylint
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main ] # Or any branches you want to trigger on
 
 jobs:
   check_output:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        script_name: ${{ github.event.pull_request.changed_files.*.filename }} # Get all changed file names
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -20,28 +22,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install pylint
           # Add any other dependencies your script needs here
-      - name: Run Pylint
-        run: pylint your_script.py
-      - name: Run Python script and capture output
+      - name: Run Pylint (if it's a Python file)
+        if: contains(matrix.script_name, '.py') # Check if it is a python file
+        run: pylint ${{ matrix.script_name }}
+      - name: Run Python script and capture output (if it's a Python file)
         id: run_script
+        if: contains(matrix.script_name, '.py')
         run: |
-          output=$(python your_script.py)
+          output=$(python ${{ matrix.script_name }})
           echo "::set-output name=script_output::$output"
-      - name: Check the output
+      - name: Check the output (if it's a Python file)
+        if: contains(matrix.script_name, '.py')
         run: |
           expected_output="Onrm Xabjf!" # Replace with the actual expected string
           actual_output="${{ steps.run_script.outputs.script_output }}"
 
           if [[ "$actual_output" == "$expected_output" ]]; then
-            echo "Output matches expected value."
+            echo "Output matches expected value for ${{ matrix.script_name }}."
           else
-            echo "Output MISMATCH:"
+            echo "Output MISMATCH for ${{ matrix.script_name }}:"
             echo "Expected: $expected_output"
             echo "Actual:   $actual_output"
             exit 1  # Fail the workflow if the output doesn't match
           fi
       - name: (Optional) More detailed output comparison (for debugging)
-        if: always()
+        if: contains(matrix.script_name, '.py') && always()
         run: |
-          echo "Full Actual Output (for debugging):"
+          echo "Full Actual Output for ${{ matrix.script_name }} (for debugging):"
           echo "${{ steps.run_script.outputs.script_output }}"
